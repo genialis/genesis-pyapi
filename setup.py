@@ -25,7 +25,7 @@ if __name__ == '__main__':
         author_email = AUTHOR_EMAIL,
         url = URL,
         license = LICENSE,
-        packages = ['genapi', 'genapi.test'],
+        packages = ['genapi', 'genapi.tests'],
         package_data = {},
         classifiers = [
             'Development Status :: 4 - Beta',
@@ -38,5 +38,5 @@ if __name__ == '__main__':
         include_package_data = True,
         zip_safe = False,
         install_requires = [r for r in open('requirements.txt').read().split("\n") if r != "" and r[:2] != "-e"],
-        test_suite = 'genapi.test',
+        test_suite = 'genapi.tests',
     )
