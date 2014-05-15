@@ -16,7 +16,7 @@ class GenAuth(requests.auth.AuthBase):
 
         r = requests.post(url + '/user/ajax/login/', data=payload)
         if not ('sessionid' in r.cookies and 'csrftoken' in r.cookies):
-            raise Exception('Invalid credentials or Genesis url')
+            raise Exception('Invalid credentials or url.')
 
         self.sessionid = r.cookies['sessionid']
         self.csrftoken = r.cookies['csrftoken']
@@ -27,56 +27,60 @@ class GenAuth(requests.auth.AuthBase):
         return r
 
 
+class GenProject(object):
+
+    def __init__(self, data=None, gencloud=None):
+        if data:
+            for field in data:
+                setattr(self, field, data[field])
+
+        self.gencloud = gencloud
+
+    def data_types(self):
+        data = self.gencloud.project_objects(self.id)
+        return sorted(set(d['type'] for d in data))
+
+    def objects(self, **query):
+        raise NotImplementedError()
+
+    def find(self, filter):
+        raise NotImplementedError()
+
+
 class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    cache = {'data': {}}
-
-    class GenProject(object):
-
-        def __init__(self, data=None, api=None):
-            if data:
-                for field in data:
-                    setattr(self, field, data[field])
-
-            self.api = api
-            self.data = None
-
-        def _fetch_data(self):
-            if not self.data:
-                self.data = []
-                data = self.api.data.get(case_ids__contains=self.id)['objects']
-                for d in data:
-                    if d['id'] not in GenCloud.cache['data']:
-                        GenCloud.cache['data'][d['id']] = d
-                    else:
-                        # TODO: update existing object
-                        pass
-
-                    self.data.append(GenCloud.cache['data'][d['id']])
-
-            return self.data
-
-        def data_types(self):
-            self._fetch_data()
-            return sorted(set(d['type'] for d in self.data))
-
-        def objects(self, **query):
-            raise NotImplementedError()
-
-        def find(self, filter):
-            raise NotImplementedError()
-
     def __init__(self, username, password, url='http://cloud.genialis.com'):
-        GenCloud.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
+        self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
             auth=GenAuth(username, password, url))
 
-    def projects(self):
-        if 'projects' not in GenCloud.cache:
-            GenCloud.cache['projects'] = {c['id']: GenCloud.GenProject(c, self.api) for c in self.api.case.get()['objects']}
+        self.cache = {'objects': {}, 'projects': None, 'project_objects': {}}
 
-        return GenCloud.cache['projects']
+    def projects(self):
+        if not ('projects' in self.cache and self.cache['projects']):
+            self.cache['projects'] = {c['id']: GenProject(c, self) for c in self.api.case.get()['objects']}
+
+        return self.cache['projects']
+
+    def project_objects(self, project_id):
+        if not self.cache['project_objects'][project_id]:
+            self.cache['project_objects'][project_id] = []
+            data = self.api.data.get(case_ids__contains=project_id)['objects']
+            for d in data:
+                if d['id'] not in self.cache['objects']:
+                    self.cache['objects'][d['id']] = d
+                else:
+                    # TODO: update existing object
+                    pass
+
+                self.cache['project_objects'][project_id].append(self.cache['objects'][d['id']])
+
+        return self.cache['project_objects'][project_id]
 
     def get_data(self, objects, field):
         raise NotImplementedError()
+
+
+g = GenCloud('admin', 'admin', 'http://gendev:10180')
+p = g.projects().itervalues().next()
