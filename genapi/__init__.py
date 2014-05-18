@@ -28,7 +28,6 @@ class GenAuth(requests.auth.AuthBase):
         return r
 
 
-
 class GenObject(object):
 
     """Genesis data object annotation."""
@@ -62,7 +61,7 @@ class GenObject(object):
         self.annotation = {}
         for f in fields:
             setattr(self, f, data[f])
-            self.annotation[f] = data[f]
+            #self.annotation[f] = data[f]
 
         self.name = data['static']['name'] if 'name' in data['static'] else ''
 
@@ -80,6 +79,11 @@ class GenObject(object):
             a[path] = {'name': name, 'value': value, 'type': typ}
 
         return a
+
+    def print_annotation(self):
+        """Print annotation "key: value" pairs to standard output."""
+        for path, a in self.annotation.iteritems():
+            print "{}: {}".format(path, a['value'])
 
     def __str__(self):
         return unicode(self.name).encode('utf-8')
@@ -169,9 +173,23 @@ class GenCloud(object):
                 projobjects[project_id].append(objects[uuid])
 
             # hydrate reference fields
-            for d in projobjects[project_id][27:]:
-                #self._hydrate_refs(d['input'], d['input_schema'])
-                break
+            for d in projobjects[project_id]:
+                while True:
+                    ref_annotation = {}
+                    remove_annotation = []
+                    for path, a in d.annotation.iteritems():
+                        if a['type'].startswith('data:'):
+                            # if referenced data object found
+                            # copy annotation
+                            ref_annotation.update({path + '.' + k: v for k, v in self.cache['objects'][a['value']].annotation.iteritems()})
+                            remove_annotation.append(path)
+                    if ref_annotation:
+                        d.annotation.update(ref_annotation)
+                        for path in remove_annotation:
+                            del d.annotation[path]
+                    else:
+                        break
+
 
         return projobjects[project_id]
 
