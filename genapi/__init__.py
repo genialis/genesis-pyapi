@@ -34,11 +34,37 @@ class GenObject(object):
     """Genesis data object annotation."""
 
     def __init__(self, data):
-        self.id = data['id']
-        self.status = data['status']
-        self.type = data['type']
-        self.name = data['static']['name'] if 'name' in data['static'] else ''
+        self.update(data)
+
+    def update(self, data):
+        """Update the object with new data."""
+        fields = [
+            'id',
+            'status',
+            'type',
+            'persistence',
+            'date_start',
+            'date_finish',
+            'date_created',
+            'date_modified',
+            'checksum',
+            'processor_name',
+            'input',
+            'input_schema',
+            'output',
+            'output_schema',
+            'static',
+            'static_schema',
+            'var',
+            'var_template',
+        ]
+
         self.annotation = {}
+        for f in fields:
+            setattr(self, f, data[f])
+            self.annotation[f] = data[f]
+
+        self.name = data['static']['name'] if 'name' in data['static'] else ''
 
         self.annotation.update(self._flatten_field(data['input'], data['input_schema'], 'input'))
         self.annotation.update(self._flatten_field(data['output'], data['output_schema'], 'output'))
@@ -132,18 +158,15 @@ class GenCloud(object):
             projobjects[project_id] = []
             data = self.api.data.get(case_ids__contains=project_id)['objects']
             for d in data:
-                d = GenObject(d)
-
-                if d.id in objects:
+                uuid = d['id']
+                if uuid in objects:
                     # Update existing object
-                    #for key, val in d.iteritems():
-                    #    objects[id][key] = val
-                    pass
+                    objects[uuid].update(d)
                 else:
                     # Insert new object
-                    objects[d.id] = d
+                    objects[uuid] = GenObject(d)
 
-                projobjects[project_id].append(objects[d.id])
+                projobjects[project_id].append(objects[uuid])
 
             # hydrate reference fields
             for d in projobjects[project_id][27:]:
@@ -203,7 +226,7 @@ def iterate_fields(fields, schema):
 
 
 def iterate_schema(fields, schema, path=None):
-    """Iterate over all schema sub-fields."""
+    """Recursively iterate over all schema sub-fields."""
     for field_schema in schema:
         name = field_schema['name']
         if 'group' in field_schema:
@@ -216,3 +239,9 @@ def iterate_schema(fields, schema, path=None):
                 yield (field_schema, fields)
             else:
                 yield (field_schema, fields, '{}.{}'.format(path, name))
+
+
+if __name__ == '__main__':
+    g = GenCloud('admin', 'admin', 'http://gendev:10180')
+    p = g.projects().itervalues().next()
+    o = p.objects()
