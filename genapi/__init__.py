@@ -1,3 +1,4 @@
+import os
 import re
 import urlparse
 
@@ -162,8 +163,9 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, username, password, url='http://cloud.genialis.com'):
+    def __init__(self, username, password, url='http://cloud.genialis.com', download_path="."):
         self.url = url
+        self.download_path = download_path
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
             auth=GenAuth(username, password, url))
 
@@ -246,7 +248,16 @@ class GenCloud(object):
         for o in objects:
             a = self.cache['objects'][o].annotation[field]
             url = urlparse.urljoin(self.url, 'api/v1/data/{}/download/{}'.format(o, a['value']['file']))
-            files.append(url)
+
+            r = requests.get(url, stream=True)
+            local_filename = os.path.join(self.download_path, a['value']['file'])
+            with open(local_filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=1024):
+                    if chunk: # filter out keep-alive new chunks
+                        f.write(chunk)
+                        f.flush()
+
+            files.append(local_filename)
 
         return files
 
@@ -281,4 +292,5 @@ def iterate_schema(fields, schema, path=None):
 if __name__ == '__main__':
     g = GenCloud('admin', 'admin', 'http://gendev:10180')
     p = g.projects().itervalues().next()
-    o = p.objects()
+    o = p.objects(type__startswith='data:expression').itervalues().next()
+    o.download('output.rpkum')
