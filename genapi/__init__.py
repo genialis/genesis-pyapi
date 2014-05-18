@@ -32,7 +32,8 @@ class GenObject(object):
 
     """Genesis data object annotation."""
 
-    def __init__(self, data):
+    def __init__(self, data, gencloud):
+        self.gencloud = gencloud
         self.update(data)
 
     def update(self, data):
@@ -85,6 +86,32 @@ class GenObject(object):
         for path, a in self.annotation.iteritems():
             print "{}: {}".format(path, a['value'])
 
+    def print_downloads(self):
+        """Print file fields to standard output."""
+        for path, a in self.annotation.iteritems():
+            if path.startswith('output') and a['type'] == 'basic:file:':
+                print "{}: {}".format(path, a['value']['file'])
+
+    def download(self, field):
+        """Download a file.
+
+        :param field: file field to download
+        :type field: string
+        :rtype: a file handle
+
+        """
+        if not field.startswith('output'):
+            raise ValueError("Only processor results (output.* fields) can be downloaded")
+
+        if field not in self.annotation:
+            raise ValueError("Download field {} does not exist".format(field))
+
+        a = self.annotation[field]
+        if a['type'] != 'basic:file:':
+            raise ValueError("Only basic:file: field can be downloaded")
+
+        return self.gencloud.download([self.id], field)[0]
+
     def __str__(self):
         return unicode(self.name).encode('utf-8')
 
@@ -136,6 +163,7 @@ class GenCloud(object):
     """Python API for the Genesis platform."""
 
     def __init__(self, username, password, url='http://cloud.genialis.com'):
+        self.url = url
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
             auth=GenAuth(username, password, url))
 
@@ -168,19 +196,19 @@ class GenCloud(object):
                     objects[uuid].update(d)
                 else:
                     # Insert new object
-                    objects[uuid] = GenObject(d)
+                    objects[uuid] = GenObject(d, self)
 
                 projobjects[project_id].append(objects[uuid])
 
-            # hydrate reference fields
+            # Hydrate reference fields
             for d in projobjects[project_id]:
                 while True:
                     ref_annotation = {}
                     remove_annotation = []
                     for path, a in d.annotation.iteritems():
                         if a['type'].startswith('data:'):
-                            # if referenced data object found
-                            # copy annotation
+                            # Referenced data object found
+                            # Copy annotation
                             ref_annotation.update({path + '.' + k: v for k, v in self.cache['objects'][a['value']].annotation.iteritems()})
                             remove_annotation.append(path)
                     if ref_annotation:
@@ -193,43 +221,34 @@ class GenCloud(object):
 
         return projobjects[project_id]
 
-    def download_data(self, objects, field):
+    def download(self, objects, field):
         """Download files of data objects.
 
         :rtype: list of file handles
 
         """
-        raise NotImplementedError()
+        if not field.startswith('output'):
+            raise ValueError("Only processor results (output.* fields) can be downloaded")
 
+        for o in objects:
+            o = str(o)
+            if re.match('^[0-9a-fA-F]{24}$', o) is None:
+                raise ValueError("Invalid object id {}".format(o))
 
-    def _hydrate_refs(self, input, input_schema):
-        """Hydrate references with linked data.
+            if field not in self.cache['objects'][o].annotation:
+                raise ValueError("Download field {} does not exist".format(field))
 
-        Find fields with complex data:<...>: types.
-        Assign a data reference that corresponds to those fields.
+            a = self.cache['objects'][o].annotation[field]
+            if a['type'] != 'basic:file:':
+                raise ValueError("Only basic:file: field can be downloaded")
 
-        """
-        for field_schema, fields in iterate_fields(input, input_schema):
-            name = field_schema['name']
-            value = fields[name]
-            if 'type' in field_schema:
-                if field_schema['type'].startswith('data:'):
-                    if re.match('^[0-9a-fA-F]{24}$', str(value)) is None:
-                        print "ERROR: data:<...> value in field \"{}\", type \"{}\" not ObjectId but {}.".format(
-                            name, field_schema['type'], value)
+        files = []
+        for o in objects:
+            a = self.cache['objects'][o].annotation[field]
+            url = urlparse.urljoin(self.url, 'api/v1/data/{}/download/{}'.format(o, a['value']['file']))
+            files.append(url)
 
-                    fields[name] = self.cache['objects'][value]
-
-                elif field_schema['type'].startswith('list:data:'):
-                    outputs = []
-                    for val in value:
-                        if re.match('^[0-9a-fA-F]{24}$', str(val)) is None:
-                            print "ERROR: data:<...> value in {}, type \"{}\" not ObjectId but {}.".format(
-                                name, field_schema['type'], val)
-
-                        outputs.append(self.cache['objects'][val])
-
-                    fields[name] = outputs
+        return files
 
 
 def iterate_fields(fields, schema):
