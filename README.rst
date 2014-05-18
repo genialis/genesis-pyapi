@@ -4,11 +4,23 @@ GenAPI
 
 GenAPI is a Python API for the Genesis platform.
 
+=======
+Install
+=======
+
+To install, run::
+
+  python setup.py install
+
+To install for development, run::
+
+  python setup.py develop
+
 =====
 Usage
 =====
 
-Create a API instance:
+Create an API instance:
 
 .. code-block:: python
 

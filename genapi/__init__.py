@@ -172,7 +172,11 @@ class GenCloud(object):
         self.cache = {'objects': {}, 'projects': None, 'project_objects': {}}
 
     def projects(self):
-        """Return a list :obj:`GenProject` projects."""
+        """Return a list :obj:`GenProject` projects.
+
+        :rtype: list of :obj:`GenProject` projects
+
+        """
         if not ('projects' in self.cache and self.cache['projects']):
             self.cache['projects'] = {c['id']: GenProject(c, self) for c in self.api.case.get()['objects']}
 
@@ -183,6 +187,7 @@ class GenCloud(object):
 
         :param project_id: UUID of Genesis project
         :type project_id: string
+        :rtype: list of Data objects
 
         """
         projobjects = self.cache['project_objects']
@@ -226,6 +231,10 @@ class GenCloud(object):
     def download(self, objects, field):
         """Download files of data objects.
 
+        :param objects: Data object ids
+        :type objects: list of UUID strings
+        :param field: Download field name
+        :type field: string
         :rtype: list of file handles
 
         """
@@ -263,7 +272,14 @@ class GenCloud(object):
 
 
 def iterate_fields(fields, schema):
-    """Recursively iterate over all DictField sub-fields."""
+    """Recursively iterate over all DictField sub-fields.
+
+    :param fields: Field instance (e.g. input)
+    :type fields: dict
+    :param schema: Schema instance (e.g. input_schema)
+    :type schema: dict
+
+    """
     schema_dict = {val['name']: val for val in schema}
     for field_id, properties in fields.iteritems():
         if 'group' in schema_dict[field_id]:
@@ -274,7 +290,16 @@ def iterate_fields(fields, schema):
 
 
 def iterate_schema(fields, schema, path=None):
-    """Recursively iterate over all schema sub-fields."""
+    """Recursively iterate over all schema sub-fields.
+
+    :param fields: Field instance (e.g. input)
+    :type fields: dict
+    :param schema: Schema instance (e.g. input_schema)
+    :type schema: dict
+    :path schema: Field path
+    :path schema: string
+
+    """
     for field_schema in schema:
         name = field_schema['name']
         if 'group' in field_schema:
