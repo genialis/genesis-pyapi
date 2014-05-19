@@ -163,7 +163,7 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, username, password, url='http://cloud.genialis.com', download_path="."):
+    def __init__(self, username='anonymous', password='anonymous', url='http://cloud.genialis.com', download_path="."):
         self.url = url
         self.download_path = download_path
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
@@ -312,10 +312,3 @@ def iterate_schema(fields, schema, path=None):
                 yield (field_schema, fields)
             else:
                 yield (field_schema, fields, '{}.{}'.format(path, name))
-
-
-if __name__ == '__main__':
-    g = GenCloud('admin', 'admin', 'http://gendev:10180')
-    p = g.projects().itervalues().next()
-    o = p.objects(type__startswith='data:expression').itervalues().next()
-    o.download('output.rpkum')

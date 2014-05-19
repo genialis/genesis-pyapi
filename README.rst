@@ -24,7 +24,7 @@ Create an API instance:
 
 .. code-block:: python
 
-   gen = GenCloud('admin', 'admin', 'http://gendev:10180')
+   gen = GenCloud('anonymous', 'anonymous', 'http://cloud.genialis.com')
 
 
 Get all project and select the first one:
