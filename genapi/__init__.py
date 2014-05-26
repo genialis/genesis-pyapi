@@ -165,8 +165,8 @@ class GenCloud(object):
 
     def __init__(self, username='anonymous', password='anonymous', url='http://cloud.genialis.com'):
         self.url = url
-        self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
-            auth=GenAuth(username, password, url))
+        self.auth = GenAuth(username, password, url)
+        self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'), self.auth)
 
         self.cache = {'objects': {}, 'projects': None, 'project_objects': {}}
 
@@ -255,7 +255,7 @@ class GenCloud(object):
         for o in objects:
             a = self.cache['objects'][o].annotation[field]
             url = urlparse.urljoin(self.url, 'api/v1/data/{}/download/{}'.format(o, a['value']['file']))
-            yield requests.get(url, stream=True)
+            yield requests.get(url, stream=True, auth=self.auth)
 
 
 def iterate_fields(fields, schema):
