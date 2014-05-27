@@ -111,7 +111,7 @@ class GenObject(object):
         if a['type'] != 'basic:file:':
             raise ValueError("Only basic:file: field can be downloaded")
 
-        return self.gencloud.download([self.id], field)[0]
+        return self.gencloud.download([self.id], field).next()
 
     def __str__(self):
         return unicode(self.name).encode('utf-8')
@@ -163,11 +163,10 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, username='anonymous', password='anonymous', url='http://cloud.genialis.com', download_path="."):
+    def __init__(self, username='anonymous', password='anonymous', url='http://cloud.genialis.com'):
         self.url = url
-        self.download_path = download_path
-        self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'),
-            auth=GenAuth(username, password, url))
+        self.auth = GenAuth(username, password, url)
+        self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'), self.auth)
 
         self.cache = {'objects': {}, 'projects': None, 'project_objects': {}}
 
@@ -235,7 +234,7 @@ class GenCloud(object):
         :type objects: list of UUID strings
         :param field: Download field name
         :type field: string
-        :rtype: list of file handles
+        :rtype: generator of requests.Response objects
 
         """
         if not field.startswith('output'):
@@ -253,22 +252,10 @@ class GenCloud(object):
             if a['type'] != 'basic:file:':
                 raise ValueError("Only basic:file: field can be downloaded")
 
-        files = []
         for o in objects:
             a = self.cache['objects'][o].annotation[field]
             url = urlparse.urljoin(self.url, 'api/v1/data/{}/download/{}'.format(o, a['value']['file']))
-
-            r = requests.get(url, stream=True)
-            local_filename = os.path.join(self.download_path, a['value']['file'])
-            with open(local_filename, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=1024):
-                    if chunk: # filter out keep-alive new chunks
-                        f.write(chunk)
-                        f.flush()
-
-            files.append(local_filename)
-
-        return files
+            yield requests.get(url, stream=True, auth=self.auth)
 
 
 def iterate_fields(fields, schema):
