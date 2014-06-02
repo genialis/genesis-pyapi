@@ -177,7 +177,7 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, email='anonymous', password='anonymous', url='http://cloud.genialis.com'):
+    def __init__(self, email='anonymous@genialis.com', password='anonymous', url='http://cloud.genialis.com'):
         self.url = url
         self.auth = GenAuth(email, password, url)
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'), self.auth)
