@@ -10,15 +10,22 @@ class GenAuth(requests.auth.AuthBase):
 
     """Attach HTTP Genesis Authentication to Request object."""
 
-    def __init__(self, username, password, url):
+    def __init__(self, email, password, url):
         payload = {
-            'username': username,
+            'email': email,
             'password': password
         }
 
-        r = requests.post(url + '/user/ajax/login/', data=payload)
+        try:
+            r = requests.post(url + '/user/ajax/login/', data=payload)
+        except requests.exceptions.ConnectionError:
+            raise Exception('Invalid url.')
+
+        if r.status_code == 403:
+            raise Exception('Invalid credentials.')
+
         if not ('sessionid' in r.cookies and 'csrftoken' in r.cookies):
-            raise Exception('Invalid credentials or url.')
+            raise Exception('Invalid credentials.')
 
         self.sessionid = r.cookies['sessionid']
         self.csrftoken = r.cookies['csrftoken']
@@ -145,6 +152,13 @@ class GenProject(object):
         ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
         return [d for d in data if d.id in ids]
 
+    def processors(self, **query):
+        """Query for Processor objects."""
+        data = self.gencloud.project_objects(self.id)
+        query['case_ids__contains'] = self.id
+        ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
+        return [d for d in data if d.id in ids]
+
     def find(self, filter):
         """Filter Data object annotation."""
         raise NotImplementedError()
@@ -163,9 +177,9 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, username='anonymous', password='anonymous', url='http://cloud.genialis.com'):
+    def __init__(self, email='anonymous', password='anonymous', url='http://cloud.genialis.com'):
         self.url = url
-        self.auth = GenAuth(username, password, url)
+        self.auth = GenAuth(email, password, url)
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'), self.auth)
 
         self.cache = {'objects': {}, 'projects': None, 'project_objects': {}}
@@ -226,6 +240,18 @@ class GenCloud(object):
 
 
         return projobjects[project_id]
+
+    def processors(self, project_id):
+        """Return a list of Processor objects.
+
+        :param project_id: UUID of Genesis project
+        :type project_id: string
+        :rtype: list of Processor objects
+
+        """
+        proc = self.api.processor.get()['objects']
+        print proc
+        return proc
 
     def download(self, objects, field):
         """Download files of data objects.
