@@ -1,9 +1,19 @@
+import json
+import mmap
 import os
 import re
+import urllib
+import urllib2
 import urlparse
 
 import requests
 import slumber
+
+from poster.encode import multipart_encode
+from poster.streaminghttp import register_openers
+
+
+register_openers()
 
 
 class GenAuth(requests.auth.AuthBase):
@@ -19,7 +29,7 @@ class GenAuth(requests.auth.AuthBase):
         try:
             r = requests.post(url + '/user/ajax/login/', data=payload)
         except requests.exceptions.ConnectionError:
-            raise Exception('Invalid url.')
+            raise Exception('Invalid url {}'.format(url))
 
         if r.status_code == 403:
             raise Exception('Invalid credentials.')
@@ -33,6 +43,7 @@ class GenAuth(requests.auth.AuthBase):
     def __call__(self, r):
         # modify and return the request
         r.headers['Cookie'] = 'csrftoken={}; sessionid={}'.format(self.csrftoken, self.sessionid)
+        r.headers['X-CSRFToken'] = self.csrftoken
         return r
 
 
@@ -152,13 +163,6 @@ class GenProject(object):
         ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
         return [d for d in data if d.id in ids]
 
-    def processors(self, **query):
-        """Query for Processor objects."""
-        data = self.gencloud.project_objects(self.id)
-        query['case_ids__contains'] = self.id
-        ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
-        return [d for d in data if d.id in ids]
-
     def find(self, filter):
         """Filter Data object annotation."""
         raise NotImplementedError()
@@ -241,17 +245,98 @@ class GenCloud(object):
 
         return projobjects[project_id]
 
-    def processors(self, project_id):
+    def processors(self, processor_name=None):
         """Return a list of Processor objects.
 
-        :param project_id: UUID of Genesis project
+        :param project_id: ObjectId of Genesis project
         :type project_id: string
         :rtype: list of Processor objects
 
         """
-        proc = self.api.processor.get()['objects']
-        print proc
-        return proc
+        if processor_name:
+            return self.api.processor.get(name=processor_name)['objects']
+        else:
+            return self.api.processor.get()['objects']
+
+    def print_upload_processors(self):
+        """Print all upload processor names."""
+        for p in self.processors():
+            if p['name'].startswith('import:upload:'):
+                print p['name']
+
+    def print_processor_inputs(self, processor_name):
+        """Print processor input fields and types.
+
+        :param processor_name: Processor object name
+        :type processor_name: string
+
+        """
+        p = self.processors(processor_name=processor_name)
+
+        if len(p) == 1:
+            p = p[0]
+        else:
+            Exception('Invalid processor name')
+
+        for field_schema, fields, path in iterate_schema({}, p['input_schema'], 'input'):
+            name = field_schema['name']
+            typ = field_schema['type']
+            value = fields[name] if name in fields else None
+            print "{} -> {}".format(name, typ)
+
+    def upload(self, project_id, processor_name, **fields):
+        """Upload files and data objects.
+
+        :param project_id: ObjectId of Genesis project
+        :type project_id: string
+        :param processor_name: Processor object name
+        :type processor_name: string
+        :param fields: Processor field-value pairs
+        :type fields: args
+        :rtype: HTTP Response object
+
+        """
+        p = self.processors(processor_name=processor_name)
+
+        if len(p) == 1:
+            p = p[0]
+        else:
+            Exception('Invalid processor name {}'.format(processor_name))
+
+        for field_name, field_val in fields.iteritems():
+            if field_name not in p['input_schema']:
+                Exception("Field {} not in processor {} inputs".format(field_name, p['name']))
+
+            if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
+                if not os.path.isfile(field_val):
+                    Exception("File {} not found".format(field_val))
+
+        inputs = {}
+
+        for field_name, field_val in fields.iteritems():
+            if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
+                datagen, headers = multipart_encode({'files[]': open(field_val, 'rb')})
+                request = urllib2.Request(urlparse.urljoin(self.url, 'upload/'), datagen, headers)
+                request.add_header('Cookie', 'csrftoken={}; sessionid={}'.format(self.api.csrftoken, self.api.sessionid))
+                response = urllib2.urlopen(request)
+                response_json = json.loads(response.read())
+
+                inputs[field_name] = {
+                    'file': response_json['files'][0]['name'],
+                    'file_temp': response_json['files'][0]['temp']
+                }
+            else:
+                inputs[field_name] = field_val
+
+        d = {
+            'status': 'uploading',
+            'case_id': project_id,
+            'processor_name': processor_name,
+            'input': inputs,
+            'input_schema': p['input_schema']
+        }
+
+        return self.api.data.post(d)
 
     def download(self, objects, field):
         """Download files of data objects.
@@ -301,6 +386,18 @@ def iterate_fields(fields, schema):
         else:
             yield (schema_dict[field_id], fields)
 
+def find_field(schema, field_name):
+    """Find field in schema by field name.
+
+    :param schema: Schema instance (e.g. input_schema)
+    :type schema: dict
+    :param field_name: Field name
+    :type field_name: string
+
+    """
+    for field in schema:
+        if field['name'] == field_name:
+            return field
 
 def iterate_schema(fields, schema, path=None):
     """Recursively iterate over all schema sub-fields.
