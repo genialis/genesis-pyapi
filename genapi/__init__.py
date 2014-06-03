@@ -2,12 +2,13 @@ import json
 import mmap
 import os
 import re
+import sys
 import urlparse
 
 import requests
 import slumber
 
-from requests_toolbelt import MultipartEncoder
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 
 
 class GenAuth(requests.auth.AuthBase):
@@ -307,11 +308,21 @@ class GenCloud(object):
 
         inputs = {}
 
+        def monitor_callback(fname, monitor):
+            total = len(monitor.encoder)
+            sys.stdout.write("\r{:.0f} % Uploading {}".format(100. * monitor.bytes_read / total, fname))
+            sys.stdout.flush()
+
         for field_name, field_val in fields.iteritems():
             if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
-                m = MultipartEncoder(
+                e = MultipartEncoder(
                     fields={'files[]': (field_val, open(field_val, 'rb'), 'application/octet-stream')}
                 )
+
+                m = MultipartEncoderMonitor(e, lambda m: monitor_callback(field_val, m))
+
+                sys.stdout.write("Uploading {}".format(field_val))
+                sys.stdout.flush()
 
                 response = requests.post(
                     urlparse.urljoin(self.url, 'upload/'),
@@ -335,7 +346,7 @@ class GenCloud(object):
             'input': inputs,
             'input_schema': p['input_schema']
         }
-
+        print
         return self.api.data.post(d)
 
     def download(self, objects, field):
