@@ -2,18 +2,12 @@ import json
 import mmap
 import os
 import re
-import urllib
-import urllib2
 import urlparse
 
 import requests
 import slumber
 
-from poster.encode import multipart_encode
-from poster.streaminghttp import register_openers
-
-
-register_openers()
+from requests_toolbelt import MultipartEncoder
 
 
 class GenAuth(requests.auth.AuthBase):
@@ -315,11 +309,17 @@ class GenCloud(object):
 
         for field_name, field_val in fields.iteritems():
             if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
-                datagen, headers = multipart_encode({'files[]': open(field_val, 'rb')})
-                request = urllib2.Request(urlparse.urljoin(self.url, 'upload/'), datagen, headers)
-                request.add_header('Cookie', 'csrftoken={}; sessionid={}'.format(self.api.csrftoken, self.api.sessionid))
-                response = urllib2.urlopen(request)
-                response_json = json.loads(response.read())
+                m = MultipartEncoder(
+                    fields={'files[]': (field_val, open(field_val, 'rb'), 'application/octet-stream')}
+                )
+
+                response = requests.post(
+                    urlparse.urljoin(self.url, 'upload/'),
+                    auth=self.auth,
+                    data=m,
+                    headers={'Content-Type': m.content_type})
+
+                response_json = json.loads(response.text)
 
                 inputs[field_name] = {
                     'file': response_json['files'][0]['name'],
@@ -385,6 +385,7 @@ def iterate_fields(fields, schema):
                 yield (_field_schema, _fields)
         else:
             yield (schema_dict[field_id], fields)
+
 
 def find_field(schema, field_name):
     """Find field in schema by field name.
