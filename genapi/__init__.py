@@ -330,6 +330,8 @@ class GenCloud(object):
                     data=m,
                     headers={'Content-Type': m.content_type})
 
+                print
+
                 response_json = json.loads(response.text)
 
                 inputs[field_name] = {
@@ -346,7 +348,7 @@ class GenCloud(object):
             'input': inputs,
             'input_schema': p['input_schema']
         }
-        print
+
         return self.api.data.post(d)
 
     def download(self, objects, field):
