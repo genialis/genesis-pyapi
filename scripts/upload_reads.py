@@ -4,6 +4,7 @@ import genapi
 
 parser = argparse.ArgumentParser(description='Upload NGS reads to the Genesis platform.')
 
+parser.add_argument('project', help='Project id')
 parser.add_argument('-a', '--address', default='http://cloud.genialis.com', help='GenCloud url')
 parser.add_argument('-e', '--email', default='anonymous@genialis.com', help='Sign-in e-mail')
 parser.add_argument('-p', '--password', default='anonymous', help='Sign-in password')
@@ -21,8 +22,10 @@ if not (args.r or (args.r1 and args.r2)) or \
     print
     exit(1)
 
+g = genapi.GenCloud(args.email, args.password, args.address)
+
 if args.r:
-
-    pass
-
+    r = g.upload(args.project, 'import:upload:reads-fastq', src=args.r)
+else:
+    r = g.upload(args.project, 'import:upload:reads-fastq-paired-end', src1=args.r1, src2=args.r2)
 
