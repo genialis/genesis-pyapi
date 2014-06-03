@@ -28,4 +28,3 @@ if args.r:
     r = g.upload(args.project, 'import:upload:reads-fastq', src=args.r)
 else:
     r = g.upload(args.project, 'import:upload:reads-fastq-paired-end', src1=args.r1, src2=args.r2)
-
