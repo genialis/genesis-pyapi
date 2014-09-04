@@ -279,6 +279,12 @@ class GenCloud(object):
             value = fields[name] if name in fields else None
             print "{} -> {}".format(name, typ)
 
+    def rundata(self, strjson):
+        """POST JSON data object to server"""
+
+        d = json.loads(strjson)
+        return self.api.data.post(d)
+
     def upload(self, project_id, processor_name, **fields):
         """Upload files and data objects.
 
