@@ -4,11 +4,13 @@ import os
 import re
 import sys
 import urlparse
+import uuid
 
 import requests
 import slumber
 
-from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
+
+CHUNK_SIZE = 1024
 
 
 class GenAuth(requests.auth.AuthBase):
@@ -34,11 +36,16 @@ class GenAuth(requests.auth.AuthBase):
 
         self.sessionid = r.cookies['sessionid']
         self.csrftoken = r.cookies['csrftoken']
+        self.subscribe_id = str(uuid.uuid4())
 
     def __call__(self, r):
         # modify and return the request
         r.headers['Cookie'] = 'csrftoken={}; sessionid={}'.format(self.csrftoken, self.sessionid)
         r.headers['X-CSRFToken'] = self.csrftoken
+
+        # Not needed until we support HTTP Push with the API
+        # if r.path_url != '/upload/':
+        #     r.headers['X-SubscribeID'] = self.subscribe_id
         return r
 
 
@@ -76,7 +83,6 @@ class GenObject(object):
         self.annotation = {}
         for f in fields:
             setattr(self, f, data[f])
-            #self.annotation[f] = data[f]
 
         self.name = data['static']['name'] if 'name' in data['static'] else ''
 
@@ -205,7 +211,7 @@ class GenCloud(object):
         projobjects = self.cache['project_objects']
         objects = self.cache['objects']
 
-        if not project_id in projobjects:
+        if project_id not in projobjects:
             projobjects[project_id] = []
             data = self.api.data.get(case_ids__contains=project_id)['objects']
             for d in data:
@@ -228,7 +234,10 @@ class GenCloud(object):
                         if a['type'].startswith('data:'):
                             # Referenced data object found
                             # Copy annotation
-                            ref_annotation.update({path + '.' + k: v for k, v in self.cache['objects'][a['value']].annotation.iteritems()})
+                            if a['value'] in self.cache['objects']:
+                                annotation = self.cache['objects'][a['value']].annotation
+                                ref_annotation.update({path + '.' + k: v for k, v in annotation.iteritems()})
+
                             remove_annotation.append(path)
                     if ref_annotation:
                         d.annotation.update(ref_annotation)
@@ -236,7 +245,6 @@ class GenCloud(object):
                             del d.annotation[path]
                     else:
                         break
-
 
         return projobjects[project_id]
 
@@ -285,6 +293,19 @@ class GenCloud(object):
         d = json.loads(strjson)
         return self.api.data.post(d)
 
+    def post(self, resource_url, data):
+        """Create an object.
+
+
+        :param resource_url: Resource location
+        :type resource_url: string
+        :param data: Object values
+        :type data: dict
+
+        """
+        return requests.post(urlparse.urljoin(self.url, resource_url),
+                             data=data, auth=self.auth)
+
     def upload(self, project_id, processor_name, **fields):
         """Upload files and data objects.
 
@@ -314,48 +335,85 @@ class GenCloud(object):
 
         inputs = {}
 
-        def monitor_callback(fname, monitor):
-            total = len(monitor.encoder)
-            sys.stdout.write("\r{:.0f} % Uploading {}".format(100. * monitor.bytes_read / total, fname))
-            sys.stdout.flush()
-
         for field_name, field_val in fields.iteritems():
             if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
-                e = MultipartEncoder(
-                    fields={'files[]': (field_val, open(field_val, 'rb'), 'application/octet-stream')}
-                )
 
-                m = MultipartEncoderMonitor(e, lambda m: monitor_callback(field_val, m))
+                file_temp = self._upload_file(field_val)
 
-                sys.stdout.write("Uploading {}".format(field_val))
-                sys.stdout.flush()
-
-                response = requests.post(
-                    urlparse.urljoin(self.url, 'upload/'),
-                    auth=self.auth,
-                    data=m,
-                    headers={'Content-Type': m.content_type})
-
-                print
-
-                response_json = json.loads(response.text)
+                if not file_temp:
+                    Exception("Upload failed for {}".format(field_val))
 
                 inputs[field_name] = {
-                    'file': response_json['files'][0]['name'],
-                    'file_temp': response_json['files'][0]['temp']
+                    'file': field_val,
+                    'file_temp': file_temp
                 }
             else:
                 inputs[field_name] = field_val
 
         d = {
             'status': 'uploading',
-            'case_id': project_id,
+            'case_ids': [project_id],
             'processor_name': processor_name,
             'input': inputs,
-            'input_schema': p['input_schema']
         }
 
-        return self.api.data.post(d)
+        return self.post('/api/v1/data/', d)
+
+    def _upload_progress(self, r, *args, **kwargs):
+        print r
+        print args
+        print kwargs
+
+    def _upload_file(self, fn):
+        """Upload a single file on the platform.
+
+        File is uploaded in chunks of 1,024 bytes.
+
+        :param fn: File path
+        :type fn: string
+
+        """
+        size = os.path.getsize(fn)
+        counter = 0
+        base_name = os.path.basename(fn)
+        session_id = str(uuid.uuid4())
+
+        with open(fn, 'rb') as fd:
+            while True:
+                response = None
+                chunk = fd.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+
+                for i in range(5):
+                    content_range = 'bytes {}-{}/{}'.format(counter * CHUNK_SIZE,
+                                                            counter * CHUNK_SIZE + len(chunk) - 1, size)
+                    if i > 0 and response is not None:
+                        print "Chunk upload failed (error {}): repeating {}".format(
+                              response.status_code, content_range)
+
+                    response = requests.post(urlparse.urljoin(self.url, 'upload/'),
+                                             auth=self.auth,
+                                             data=chunk,
+                                             headers={
+                                                 'Content-Disposition': 'attachment; filename="{}"'.format(base_name),
+                                                 'Content-Length': size,
+                                                 'Content-Range': content_range,
+                                                 'Content-Type': 'application/octet-stream',
+                                                 'Session-Id': session_id})
+
+                    if response.status_code in [200, 201]:
+                        break
+                else:
+                    # Upload of a chunk failed (5 retries)
+                    return None
+
+                progress = 100. * (counter * CHUNK_SIZE + len(chunk)) / size
+                sys.stdout.write("\r{:.0f} % Uploading {}".format(progress, fn))
+                sys.stdout.flush()
+                counter += 1
+        print
+        return session_id
 
     def download(self, objects, field):
         """Download files of data objects.
@@ -384,7 +442,7 @@ class GenCloud(object):
 
         for o in objects:
             a = self.cache['objects'][o].annotation[field]
-            url = urlparse.urljoin(self.url, 'api/v1/data/{}/download/{}'.format(o, a['value']['file']))
+            url = urlparse.urljoin(self.url, 'data/{}/{}'.format(o, a['value']['file']))
             yield requests.get(url, stream=True, auth=self.auth)
 
 
@@ -418,6 +476,7 @@ def find_field(schema, field_name):
     for field in schema:
         if field['name'] == field_name:
             return field
+
 
 def iterate_schema(fields, schema, path=None):
     """Recursively iterate over all schema sub-fields.
