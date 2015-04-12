@@ -10,7 +10,7 @@ import requests
 import slumber
 
 
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 10000
 
 
 class GenAuth(requests.auth.AuthBase):
