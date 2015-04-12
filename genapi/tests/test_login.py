@@ -2,6 +2,7 @@ import unittest
 
 from genapi import GenCloud
 
+
 class TestLogin(unittest.TestCase):
 
     def test_login(self):
