@@ -1,3 +1,6 @@
+"""Python API for the Genesis platform"""
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import json
 import mmap
 import os
@@ -24,29 +27,29 @@ class GenAuth(requests.auth.AuthBase):
         }
 
         try:
-            r = requests.post(url + '/user/ajax/login/', data=payload)
+            request = requests.post(url + '/user/ajax/login/', data=payload)
         except requests.exceptions.ConnectionError:
-            raise Exception('Invalid url {}'.format(url))
+            raise Exception('Server not accessible on {}'.format(url))
 
-        if r.status_code == 403:
+        if request.status_code == 403:
             raise Exception('Invalid credentials.')
 
-        if not ('sessionid' in r.cookies and 'csrftoken' in r.cookies):
+        if not ('sessionid' in request.cookies and 'csrftoken' in request.cookies):
             raise Exception('Invalid credentials.')
 
-        self.sessionid = r.cookies['sessionid']
-        self.csrftoken = r.cookies['csrftoken']
+        self.sessionid = request.cookies['sessionid']
+        self.csrftoken = request.cookies['csrftoken']
         self.subscribe_id = str(uuid.uuid4())
 
-    def __call__(self, r):
+    def __call__(self, request):
         # modify and return the request
-        r.headers['Cookie'] = 'csrftoken={}; sessionid={}'.format(self.csrftoken, self.sessionid)
-        r.headers['X-CSRFToken'] = self.csrftoken
+        request.headers['Cookie'] = 'csrftoken={}; sessionid={}'.format(self.csrftoken, self.sessionid)
+        request.headers['X-CSRFToken'] = self.csrftoken
 
         # Not needed until we support HTTP Push with the API
         # if r.path_url != '/upload/':
         #     r.headers['X-SubscribeID'] = self.subscribe_id
-        return r
+        return request
 
 
 class GenObject(object):
@@ -92,25 +95,26 @@ class GenObject(object):
         self.annotation.update(self._flatten_field(data['var'], data['var_template'], 'var'))
 
     def _flatten_field(self, field, schema, path):
-        a = {}
+        """Reduce dicts of dicts to dot separated keys."""
+        flat = {}
         for field_schema, fields, path in iterate_schema(field, schema, path):
             name = field_schema['name']
             typ = field_schema['type']
             value = fields[name] if name in fields else None
-            a[path] = {'name': name, 'value': value, 'type': typ}
+            flat[path] = {'name': name, 'value': value, 'type': typ}
 
-        return a
+        return flat
 
     def print_annotation(self):
         """Print annotation "key: value" pairs to standard output."""
-        for path, a in self.annotation.iteritems():
-            print "{}: {}".format(path, a['value'])
+        for path, ann in self.annotation.tems():
+            print("{}: {}".format(path, ann['value']))
 
     def print_downloads(self):
         """Print file fields to standard output."""
-        for path, a in self.annotation.iteritems():
-            if path.startswith('output') and a['type'] == 'basic:file:':
-                print "{}: {}".format(path, a['value']['file'])
+        for path, ann in self.annotation.items():
+            if path.startswith('output') and ann['type'] == 'basic:file:':
+                print("{}: {}".format(path, ann['value']['file']))
 
     def download(self, field):
         """Download a file.
@@ -126,16 +130,13 @@ class GenObject(object):
         if field not in self.annotation:
             raise ValueError("Download field {} does not exist".format(field))
 
-        a = self.annotation[field]
-        if a['type'] != 'basic:file:':
+        ann = self.annotation[field]
+        if ann['type'] != 'basic:file:':
             raise ValueError("Only basic:file: field can be downloaded")
 
-        return self.gencloud.download([self.id], field).next()
+        return next(self.gencloud.download([self.id], field))
 
     def __str__(self):
-        return unicode(self.name).encode('utf-8')
-
-    def __unicode__(self):
         return self.name
 
     def __repr__(self):
@@ -151,6 +152,8 @@ class GenProject(object):
             setattr(self, field, data[field])
 
         self.gencloud = gencloud
+        self.id = None  # pylint: disable=invalid-name
+        self.name = None
 
     def data_types(self):
         """Return a list of data types."""
@@ -164,14 +167,11 @@ class GenProject(object):
         ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
         return [d for d in data if d.id in ids]
 
-    def find(self, filter):
+    def find(self, filter_str):
         """Filter Data object annotation."""
         raise NotImplementedError()
 
     def __str__(self):
-        return unicode(self.name).encode('utf-8')
-
-    def __unicode__(self):
         return self.name
 
     def __repr__(self):
@@ -215,27 +215,27 @@ class GenCloud(object):
             projobjects[project_id] = []
             data = self.api.data.get(case_ids__contains=project_id)['objects']
             for d in data:
-                uuid = d['id']
-                if uuid in objects:
+                _id = d['id']
+                if _id in objects:
                     # Update existing object
-                    objects[uuid].update(d)
+                    objects[_id].update(d)
                 else:
                     # Insert new object
-                    objects[uuid] = GenObject(d, self)
+                    objects[_id] = GenObject(d, self)
 
-                projobjects[project_id].append(objects[uuid])
+                projobjects[project_id].append(objects[_id])
 
             # Hydrate reference fields
             for d in projobjects[project_id]:
                 while True:
                     ref_annotation = {}
                     remove_annotation = []
-                    for path, a in d.annotation.iteritems():
-                        if a['type'].startswith('data:'):
+                    for path, ann in d.annotation.iteritems():
+                        if ann['type'].startswith('data:'):
                             # Referenced data object found
                             # Copy annotation
-                            if a['value'] in self.cache['objects']:
-                                annotation = self.cache['objects'][a['value']].annotation
+                            if ann['value'] in self.cache['objects']:
+                                annotation = self.cache['objects'][ann['value']].annotation
                                 ref_annotation.update({path + '.' + k: v for k, v in annotation.iteritems()})
 
                             remove_annotation.append(path)
@@ -265,7 +265,7 @@ class GenCloud(object):
         """Print all upload processor names."""
         for p in self.processors():
             if p['name'].startswith('import:upload:'):
-                print p['name']
+                print(p['name'])
 
     def print_processor_inputs(self, processor_name):
         """Print processor input fields and types.
@@ -281,11 +281,11 @@ class GenCloud(object):
         else:
             Exception('Invalid processor name')
 
-        for field_schema, fields, path in iterate_schema({}, p['input_schema'], 'input'):
+        for field_schema, _, _ in iterate_schema({}, p['input_schema'], 'input'):
             name = field_schema['name']
             typ = field_schema['type']
-            value = fields[name] if name in fields else None
-            print "{} -> {}".format(name, typ)
+            # value = fields[name] if name in fields else None
+            print("{} -> {}".format(name, typ))
 
     def rundata(self, strjson):
         """POST JSON data object to server"""
@@ -293,18 +293,44 @@ class GenCloud(object):
         d = json.loads(strjson)
         return self.api.data.post(d)
 
-    def post(self, resource_url, data):
-        """Create an object.
+    def create(self, data, resource='data'):
+        """Create an object of resource:
 
+        * data
+        * project
+        * processor
+        * trigger
+        * template
 
-        :param resource_url: Resource location
-        :type resource_url: string
         :param data: Object values
         :type data: dict
+        :param resource: Resource name
+        :type resource: string
 
         """
-        return requests.post(urlparse.urljoin(self.url, resource_url),
-                             data=data, auth=self.auth)
+        if isinstance(data, dict):
+            data = json.dumps(data)
+
+        if not isinstance(data, str):
+            raise ValueError(mgs='data must be dict, str or unicode')
+
+        resource = resource.lower()
+        if resource not in ('data', 'project', 'processor', 'trigger', 'template'):
+            raise ValueError(mgs='resource must be data, project, processor, trigger or template')
+
+        if resource == 'project':
+            resource = 'case'
+
+        url = urlparse.urljoin(self.url, '/api/v1/{}/'.format(resource))
+        return requests.post(url,
+                             data=data,
+                             auth=self.auth,
+                             headers={
+                                 'cache-control': 'no-cache',
+                                 'content-type': 'application/json',
+                                 'accept': 'application/json, text/plain, */*',
+                                 'referer': self.url,
+                             })
 
     def upload(self, project_id, processor_name, **fields):
         """Upload files and data objects.
@@ -325,7 +351,7 @@ class GenCloud(object):
         else:
             Exception('Invalid processor name {}'.format(processor_name))
 
-        for field_name, field_val in fields.iteritems():
+        for field_name, field_val in fields.tems():
             if field_name not in p['input_schema']:
                 Exception("Field {} not in processor {} inputs".format(field_name, p['name']))
 
@@ -335,7 +361,7 @@ class GenCloud(object):
 
         inputs = {}
 
-        for field_name, field_val in fields.iteritems():
+        for field_name, field_val in fields.items():
             if find_field(p['input_schema'], field_name)['type'].startswith('basic:file:'):
 
                 file_temp = self._upload_file(field_val)
@@ -357,12 +383,7 @@ class GenCloud(object):
             'input': inputs,
         }
 
-        return self.post('/api/v1/data/', d)
-
-    def _upload_progress(self, r, *args, **kwargs):
-        print r
-        print args
-        print kwargs
+        return self.create(d)
 
     def _upload_file(self, fn):
         """Upload a single file on the platform.
@@ -378,10 +399,10 @@ class GenCloud(object):
         base_name = os.path.basename(fn)
         session_id = str(uuid.uuid4())
 
-        with open(fn, 'rb') as fd:
+        with open(fn, 'rb') as f:
             while True:
                 response = None
-                chunk = fd.read(CHUNK_SIZE)
+                chunk = f.read(CHUNK_SIZE)
                 if not chunk:
                     break
 
@@ -389,8 +410,8 @@ class GenCloud(object):
                     content_range = 'bytes {}-{}/{}'.format(counter * CHUNK_SIZE,
                                                             counter * CHUNK_SIZE + len(chunk) - 1, size)
                     if i > 0 and response is not None:
-                        print "Chunk upload failed (error {}): repeating {}".format(
-                              response.status_code, content_range)
+                        print("Chunk upload failed (error {}): repeating {}".format( \
+                              response.status_code, content_range))
 
                     response = requests.post(urlparse.urljoin(self.url, 'upload/'),
                                              auth=self.auth,
@@ -412,7 +433,7 @@ class GenCloud(object):
                 sys.stdout.write("\r{:.0f} % Uploading {}".format(progress, fn))
                 sys.stdout.flush()
                 counter += 1
-        print
+        print()
         return session_id
 
     def download(self, objects, field):
@@ -436,13 +457,13 @@ class GenCloud(object):
             if field not in self.cache['objects'][o].annotation:
                 raise ValueError("Download field {} does not exist".format(field))
 
-            a = self.cache['objects'][o].annotation[field]
-            if a['type'] != 'basic:file:':
+            ann = self.cache['objects'][o].annotation[field]
+            if ann['type'] != 'basic:file:':
                 raise ValueError("Only basic:file: field can be downloaded")
 
         for o in objects:
-            a = self.cache['objects'][o].annotation[field]
-            url = urlparse.urljoin(self.url, 'data/{}/{}'.format(o, a['value']['file']))
+            ann = self.cache['objects'][o].annotation[field]
+            url = urlparse.urljoin(self.url, 'data/{}/{}'.format(o, ann['value']['file']))
             yield requests.get(url, stream=True, auth=self.auth)
 
 

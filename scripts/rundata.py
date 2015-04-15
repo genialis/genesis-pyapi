@@ -18,4 +18,4 @@ s = sys.stdin.read()
 print s
 
 g = genapi.GenCloud(args.email, args.password, args.address)
-g.rundata(s)
+g.create(s, 'data')
