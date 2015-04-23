@@ -20,6 +20,21 @@ Added
 
 
 ==================
+1.0.2 - 2015-04-22
+==================
+
+Changed
+-------
+
+* Docs updated to work for recent changes
+
+Added
+-----
+
+* Universal flag set in setup.cfg
+
+
+==================
 1.0.1 - 2015-04-21
 ==================
 
