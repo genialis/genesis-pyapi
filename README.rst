@@ -24,7 +24,7 @@ Create an API instance:
 
 .. code-block:: python
 
-   gen = GenCloud('anonymous', 'anonymous', 'http://cloud.genialis.com')
+   gen = GenCloud()
 
 
 Get all project and select the first one:
@@ -38,7 +38,7 @@ Get expression objects and select the first one:
 
 .. code-block:: python
 
-   objects = project.objects(type__startswith='data:expression')
+   objects = project.objects(type__startswith='data:expression:')
    object = object.itervalues().next()
 
 Print annotation:
@@ -57,4 +57,4 @@ Download file:
 
 .. code-block:: python
 
-   object.download('output.rpkum')
+   object.download('output.exp')

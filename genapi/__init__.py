@@ -176,7 +176,7 @@ class GenProject(object):
         raise NotImplementedError()
 
     def __str__(self):
-        return self.name or 'N/A'
+        return self.name or 'n/a'
 
     def __repr__(self):
         return u"GenProject: {} - {}".format(self.id, self.name)
