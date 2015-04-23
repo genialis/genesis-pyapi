@@ -14,13 +14,16 @@ import slumber
 
 
 CHUNK_SIZE = 10000
+DEFAULT_EMAIL = 'anonymous@genialis.com'
+DEFAULT_PASSWD = 'anonymous'
+DEFAULT_URL = 'https://dictyexpress.research.bcm.edu'
 
 
 class GenAuth(requests.auth.AuthBase):
 
     """Attach HTTP Genesis Authentication to Request object."""
 
-    def __init__(self, email, password, url):
+    def __init__(self, email=DEFAULT_EMAIL, password=DEFAULT_PASSWD, url=DEFAULT_URL):
         payload = {
             'email': email,
             'password': password
@@ -100,8 +103,9 @@ class GenObject(object):
         for field_schema, fields, path in iterate_schema(field, schema, path):
             name = field_schema['name']
             typ = field_schema['type']
+            label = field_schema['label']
             value = fields[name] if name in fields else None
-            flat[path] = {'name': name, 'value': value, 'type': typ}
+            flat[path] = {'name': name, 'value': value, 'type': typ, 'label': label}
 
         return flat
 
@@ -152,8 +156,8 @@ class GenProject(object):
             setattr(self, field, data[field])
 
         self.gencloud = gencloud
-        self.id = None  # pylint: disable=invalid-name
-        self.name = None
+        self.id = getattr(self, 'id', None)
+        self.name = getattr(self, 'name', None)
 
     def data_types(self):
         """Return a list of data types."""
@@ -172,7 +176,7 @@ class GenProject(object):
         raise NotImplementedError()
 
     def __str__(self):
-        return self.name
+        return self.name or 'N/A'
 
     def __repr__(self):
         return u"GenProject: {} - {}".format(self.id, self.name)
@@ -182,7 +186,7 @@ class GenCloud(object):
 
     """Python API for the Genesis platform."""
 
-    def __init__(self, email='anonymous@genialis.com', password='anonymous', url='http://cloud.genialis.com'):
+    def __init__(self, email=DEFAULT_EMAIL, password=DEFAULT_PASSWD, url=DEFAULT_URL):
         self.url = url
         self.auth = GenAuth(email, password, url)
         self.api = slumber.API(urlparse.urljoin(url, 'api/v1/'), self.auth)
