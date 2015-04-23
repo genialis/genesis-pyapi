@@ -458,6 +458,9 @@ class GenCloud(object):
             if re.match('^[0-9a-fA-F]{24}$', o) is None:
                 raise ValueError("Invalid object id {}".format(o))
 
+            if o not in self.cache['objects']:
+                self.cache['objects'][o] = GenObject(self.api.data(o).get(), self)
+
             if field not in self.cache['objects'][o].annotation:
                 raise ValueError("Download field {} does not exist".format(field))
 
