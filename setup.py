@@ -5,13 +5,13 @@ import os
 from setuptools import setup, find_packages
 
 
-NAME = 'Genesis-GenAPI'
-VERSION = '1.0.3'
+NAME = 'Genesis-PyAPI'
+VERSION = '1.1.0'
 DESCRIPTION = "Python API for the Genesis platform."
 LONG_DESCRIPTION = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 AUTHOR = 'Genialis d.o.o.'
 AUTHOR_EMAIL = 'dev-team@genialis.com'
-URL = 'https://github.com/genialis/genesis-genapi/'
+URL = 'https://github.com/genialis/genesis-pyapi/'
 LICENSE = 'BSD'
 
 setup(
@@ -42,5 +42,5 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[r for r in open('requirements.txt').read().split('\n') if r != '' and r[:2] != '-e'],
-    test_suite='genapi.tests'
+    test_suite='genesis.tests'
 )
