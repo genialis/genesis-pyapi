@@ -1,8 +1,9 @@
-======
-GenAPI
-======
+=============
+Genesis PyAPI
+=============
 
-GenAPI is a Python API for the Genesis platform.
+Python API for the Genesis platform.
+
 
 =======
 Install
@@ -16,6 +17,7 @@ To install for development, run::
 
   python setup.py develop
 
+
 =====
 Usage
 =====
@@ -24,7 +26,8 @@ Create an API instance:
 
 .. code-block:: python
 
-   gen = GenCloud()
+   from geneapi import Genesis
+   gen = Genesis()
 
 
 Get all project and select the first one:
@@ -32,29 +35,32 @@ Get all project and select the first one:
 .. code-block:: python
 
    projects = gen.projects()
-   project = projects.itervalues().next()
+   project = list(projects.values())[0]
 
 Get expression objects and select the first one:
 
 .. code-block:: python
 
-   objects = project.objects(type__startswith='data:expression:')
-   object = object.itervalues().next()
+   expressions = project.data(type__startswith='data:expression:')
+   expression = expressions[0]
 
 Print annotation:
 
 .. code-block:: python
 
-   object.print_annotation()
+   expression.print_annotation()
 
 Print file fields:
 
 .. code-block:: python
 
-   object.print_downloads()
+   expression.print_downloads()
 
 Download file:
 
 .. code-block:: python
 
-   object.download('output.exp')
+   filename = expression.annotation['output.exp']['value']['file']
+   resp = expression.download('output.exp')
+   with open(filename, 'w') as fd:
+       fd.write(resp.content)
