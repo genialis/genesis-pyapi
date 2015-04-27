@@ -15,8 +15,22 @@ Changed
 Fixed
 -----
 
+* Renamed genapi module in README
+
 Added
 -----
+
+
+==================
+1.1.0 - 2015-04-27
+==================
+
+Changed
+-------
+
+* Renamed genesis-genapi to genesis-pyapi
+* Renamed genapi to genesis
+* Refactored API architecture
 
 
 ==================
