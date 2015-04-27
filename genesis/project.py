@@ -16,12 +16,12 @@ class GenProject(object):
 
     def data_types(self):
         """Return a list of data types."""
-        data = self.gencloud.project_objects(self.id)
+        data = self.gencloud.project_data(self.id)
         return sorted(set(d.type for d in data))
 
     def data(self, **query):
         """Query for Data object annotation."""
-        data = self.gencloud.project_objects(self.id)
+        data = self.gencloud.project_data(self.id)
         query['case_ids__contains'] = self.id
         ids = set(d['id'] for d in self.gencloud.api.dataid.get(**query)['objects'])
         return [d for d in data if d.id in ids]
