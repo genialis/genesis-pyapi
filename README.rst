@@ -26,7 +26,7 @@ Create an API instance:
 
 .. code-block:: python
 
-   from geneapi import Genesis
+   from genesis import Genesis
    gen = Genesis()
 
 
