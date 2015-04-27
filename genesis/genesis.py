@@ -44,16 +44,25 @@ class Genesis(object):
 
         return self.cache['projects']
 
-    def project_objects(self, project_id):
+    def project_data(self, project):
         """Return a list of Data objects for given project.
 
-        :param project_id: UUID of Genesis project
-        :type project_id: string
+        :param project: ObjectId or slug of Genesis project
+        :type project: string
         :rtype: list of Data objects
 
         """
         projobjects = self.cache['project_objects']
         objects = self.cache['objects']
+        project_id = str(project)
+
+        if not re.match('^[0-9a-fA-F]{24}$', project_id):
+            # project_id is a slug
+            projects = self.api.case.get(url_slug=project_id)['objects']
+            if len(projects) != 1:
+                raise ValueError(msg='Attribute project not a slug or ObjectId: {}'.format(project_id))
+
+            project_id = str(projects[0]['id'])
 
         if project_id not in projobjects:
             projobjects[project_id] = []
@@ -91,6 +100,57 @@ class Genesis(object):
                         break
 
         return projobjects[project_id]
+
+    def data(self, **query):
+        """Query for Data object annotation."""
+        objects = self.cache['objects']
+        data = self.api.data.get(**query)['objects']
+        data_objects = []
+
+        for d in data:
+            _id = d['id']
+            if _id in objects:
+                # Update existing object
+                objects[_id].update(d)
+            else:
+                # Insert new object
+                objects[_id] = GenData(d, self)
+
+            data_objects.append(objects[_id])
+
+        # Hydrate reference fields
+        for d in data_objects:
+            count += 1
+            while True:
+                ref_annotation = {}
+                remove_annotation = []
+                for path, ann in d.annotation.items():
+                    if ann['type'].startswith('data:'):
+                        # Referenced data object found
+                        # Copy annotation
+                        _id = ann['value']
+                        if _id not in objects:
+                            try:
+                                d_tmp = self.api.data(_id).get()
+                            except slumber.exceptions.HttpClientError as ex:
+                                if ex.response.status_code == 404:
+                                    continue
+                                else:
+                                    raise ex
+
+                            objects[_id] = GenData(d_tmp, self)
+
+                        annotation = objects[_id].annotation
+                        ref_annotation.update({path + '.' + k: v for k, v in annotation.items()})
+                        remove_annotation.append(path)
+                if ref_annotation:
+                    d.annotation.update(ref_annotation)
+                    for path in remove_annotation:
+                        del d.annotation[path]
+                else:
+                    break
+
+        return data_objects
 
     def processors(self, processor_name=None):
         """Return a list of Processor objects.
