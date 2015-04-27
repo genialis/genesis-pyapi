@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 
 NAME = 'Genesis-PyAPI'
-VERSION = '1.1.0'
+VERSION = '1.1.1'
 DESCRIPTION = "Python API for the Genesis platform."
 LONG_DESCRIPTION = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 AUTHOR = 'Genialis d.o.o.'

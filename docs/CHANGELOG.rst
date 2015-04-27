@@ -15,10 +15,29 @@ Changed
 Fixed
 -----
 
+Added
+-----
+
+
+==================
+1.1.1 - 2015-04-27
+==================
+
+Changed
+-------
+
+* Query projects by slug or ID
+
+Fixed
+-----
+
 * Renamed genapi module in README
+* Renamed some methods for fetching resources
 
 Added
 -----
+
+* Query data directly
 
 
 ==================
