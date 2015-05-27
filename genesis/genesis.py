@@ -5,8 +5,12 @@ import json
 import os
 import re
 import sys
-import urlparse
 import uuid
+
+if sys.version_info < (3, ):
+    import urlparse
+else:
+    from urllib import parse as urlparse
 
 import requests
 import slumber
