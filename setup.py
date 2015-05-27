@@ -41,6 +41,9 @@ setup(
     ],
     include_package_data=True,
     zip_safe=False,
-    install_requires=[r for r in open('requirements.txt').read().split('\n') if r != '' and r[:2] != '-e'],
+    install_requires=(
+        "requests>=2.6.0",
+        "slumber>=0.7.1",
+    ),
     test_suite='genesis.tests'
 )
