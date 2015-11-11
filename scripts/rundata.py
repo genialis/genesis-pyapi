@@ -2,7 +2,7 @@
 import sys
 import argparse
 
-import genapi
+import genesis
 
 
 parser = argparse.ArgumentParser(description='POST a data object JSON.')
@@ -17,5 +17,5 @@ args = parser.parse_args()
 s = sys.stdin.read()
 print s
 
-g = genapi.GenCloud(args.email, args.password, args.address)
+g = genesis.Genesis(args.email, args.password, args.address)
 g.create(s, 'data')

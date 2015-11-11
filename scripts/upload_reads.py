@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import genapi
+import genesis
 
 parser = argparse.ArgumentParser(description='Upload NGS reads to the Genesis platform.')
 
@@ -22,7 +22,7 @@ if not (args.r or (args.r1 and args.r2)) or \
     print
     exit(1)
 
-g = genapi.GenCloud(args.email, args.password, args.address)
+g = genesis.Genesis(args.email, args.password, args.address)
 
 if args.r:
     r = g.upload(args.project, 'import:upload:reads-fastq', src=args.r)

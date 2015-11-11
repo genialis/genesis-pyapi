@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import genapi
+import genesis
 
 parser = argparse.ArgumentParser(description='Upload a batch NGS reads to the Genesis platform.')
 
@@ -29,7 +29,7 @@ if not args.r and len(args.r1) != len(args.r2):
     print
     exit(1)
 
-g = genapi.GenCloud(args.email, args.password, args.address)
+g = genesis.Genesis(args.email, args.password, args.address)
 
 if args.r:
     for r in args.r:
