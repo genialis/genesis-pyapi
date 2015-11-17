@@ -20,14 +20,25 @@ Added
 
 
 ==================
+1.2.0 - 2015-11-17
+==================
+
+Fixed
+-----
+
+* Documentation supports new namespace.
+* Scripts support new namespace.
+
+
+==================
 1.1.2 - 2015-05-27
 ==================
 
 Changed
 -------
 
-* Use urllib.urlparse
-* Slumber version bump (>=0.7.1)
+* Use urllib.urlparse.
+* Slumber version bump (>=0.7.1).
 
 
 ==================
@@ -37,18 +48,18 @@ Changed
 Changed
 -------
 
-* Query projects by slug or ID
+* Query projects by slug or ID.
 
 Fixed
 -----
 
-* Renamed genapi module in README
-* Renamed some methods for fetching resources
+* Renamed genapi module in README.
+* Renamed some methods for fetching resources.
 
 Added
 -----
 
-* Query data directly
+* Query data directly.
 
 
 ==================
@@ -58,9 +69,9 @@ Added
 Changed
 -------
 
-* Renamed genesis-genapi to genesis-pyapi
-* Renamed genapi to genesis
-* Refactored API architecture
+* Renamed genesis-genapi to genesis-pyapi.
+* Renamed genapi to genesis.
+* Refactored API architecture.
 
 
 ==================
@@ -70,7 +81,7 @@ Changed
 Fixed
 -----
 
-* Fix not in cache bug at download
+* Fix not in cache bug at download.
 
 
 ==================
@@ -80,12 +91,12 @@ Fixed
 Changed
 -------
 
-* Docs updated to work for recent changes
+* Docs updated to work for recent changes.
 
 Added
 -----
 
-* Universal flag set in setup.cfg
+* Universal flag set in setup.cfg.
 
 
 ==================
@@ -95,13 +106,13 @@ Added
 Fixed
 -----
 
-* URL set to dictyexpress.research.bcm.edu by default
-* Id and name attribute are set on init
+* URL set to dictyexpress.research.bcm.edu by default.
+* Id and name attribute are set on init.
 
 Added
 -----
 
-* Added label field to annotation
+* Added label field to annotation.
 
 
 ==================
