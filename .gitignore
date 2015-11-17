@@ -27,6 +27,7 @@ html
 
 # Ignore files created by setup.py.
 build
+_build
 dist
 MANIFEST
 *.egg-info

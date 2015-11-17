@@ -1,12 +1,10 @@
-********************
-GenAPI Documentation
-********************
 
-GenAPI is a Python API for the Genesis platform.
+Genesis PyAPI Documentation
+===========================
 
-=======
+
 Install
-=======
+-------
 
 To install, run::
 
@@ -17,21 +15,19 @@ To install for development, run::
   python setup.py develop
 
 
-=========
+
 Reference
-=========
+---------
 
-.. autoclass:: genapi.GenCloud
+.. autoclass:: genesis.Genesis
    :members:
 
-.. autoclass:: genapi.GenProject
+.. autoclass:: genesis.GenProject
    :members:
 
-.. autoclass:: genapi.GenObject
+.. autoclass:: genesis.GenData
    :members:
 
-.. autoclass:: genapi.GenAuth
-   :members:
 
 
 Indices and tables
@@ -40,3 +36,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
