@@ -20,7 +20,6 @@ Added
 
 
 ==================
-<<<<<<< HEAD
 1.1.2 - 2015-05-27
 ==================
 
@@ -106,25 +105,15 @@ Added
 
 
 ==================
-=======
->>>>>>> e172815... Version bump 1.0.0
 1.0.0 - 2015-04-17
 ==================
 
 Changed
 -------
 
-<<<<<<< HEAD
-* Upload files in chunks of 10MB
-=======
 * Upload files in chunks of 10MB.
->>>>>>> e172815... Version bump 1.0.0
 
 Fixed
 -----
 
-<<<<<<< HEAD
-* Create resources fixed for SSL
-=======
 * Create resources fixed for SSL.
->>>>>>> e172815... Version bump 1.0.0
