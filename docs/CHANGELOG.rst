@@ -15,6 +15,8 @@ Changed
 Fixed
 -----
 * Include LICENSE in the manifest.
+* Remove unnecessary documentation files, fix warnings and update
+  documentation.
 
 Added
 -----

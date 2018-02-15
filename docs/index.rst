@@ -8,12 +8,20 @@ Install
 
 To install, run::
 
-  python setup.py install
+  pip install genesis-pyapi
 
 To install for development, run::
 
-  python setup.py develop
+  git clone https://github.com/genialis/genesis-pyapi.git
+  pip install -e .[docs]
 
+
+Buildling documentation
+-----------------------
+
+.. code-block:: none
+
+  python setup.py build_sphinx
 
 
 Reference
