@@ -5,12 +5,9 @@ Change Log
 All notable changes to this project are documented in this file.
 
 
-==========
-Unreleased
-==========
-
-Changed
--------
+==================
+1.2.1 - 2018-02-15
+==================
 
 Fixed
 -----
@@ -20,6 +17,7 @@ Fixed
 
 Added
 -----
+* Fix build bundle and prepare release
 
 
 ==================

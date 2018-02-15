@@ -3,4 +3,10 @@ include LICENSE
 include requirements.txt
 
 # include documentation referenced files
-recursive-include docs *.txt
+recursive-include docs *.py *.rst
+
+# include tests and files needed by tests
+recursive-include genesis/tests *.py
+
+# include bash scripts
+recursive-include scripts *.py

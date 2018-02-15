@@ -6,10 +6,10 @@ from setuptools import setup, find_packages
 
 
 NAME = 'Genesis-PyAPI'
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 DESCRIPTION = "Python API for the Genesis platform."
 LONG_DESCRIPTION = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
-AUTHOR = 'Genialis d.o.o.'
+AUTHOR = 'Genialis, Inc.'
 AUTHOR_EMAIL = 'dev-team@genialis.com'
 URL = 'https://github.com/genialis/genesis-pyapi/'
 LICENSE = 'Apache License (2.0)'
@@ -46,5 +46,10 @@ if __name__ == '__main__':
             "requests>=2.6.0",
             "slumber>=0.7.1",
         ),
+        extras_require={
+            'docs':  [
+                'sphinx>=1.7.0',
+            ],
+        },
         test_suite='genesis.tests'
     )
