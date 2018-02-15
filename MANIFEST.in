@@ -1,2 +1,6 @@
-include *.txt
+# include meta data
+include LICENSE
+include requirements.txt
+
+# include documentation referenced files
 recursive-include docs *.txt

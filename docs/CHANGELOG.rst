@@ -14,6 +14,7 @@ Changed
 
 Fixed
 -----
+* Include LICENSE in the manifest.
 
 Added
 -----
